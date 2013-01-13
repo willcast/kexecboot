@@ -183,7 +183,7 @@ void start_kernel(struct params_t *params, int choice)
 #endif
 	const char mount_point[] = MOUNTPOINT;
 
-	const char str_cmdline_start[] = "--command-line=root=";
+	const char str_cmdline_start[] = "--command-line=";
 	const char str_rootfstype[] = " rootfstype=";
 	const char str_rootwait[] = " rootwait";
 	const char str_ubirootdev[] = "ubi0";
@@ -208,7 +208,7 @@ void start_kernel(struct params_t *params, int choice)
 	/* empty environment */
 	char *const envp[] = { NULL };
 
-	const char *load_argv[] = { NULL, "-l", NULL, NULL, NULL, NULL };
+	const char *load_argv[] = { NULL, "-l", "--mem-max=0x40FFFFFF", NULL, NULL, NULL, NULL };
 	const char *exec_argv[] = { NULL, "-e", NULL, NULL};
 
 	char *cmdline_arg = NULL, *initrd_arg = NULL;
@@ -222,16 +222,13 @@ void start_kernel(struct params_t *params, int choice)
 	load_argv[0] = kexec_path;
 
 	/* --command-line arg generation */
-	idx = 2;	/* load_argv current option index */
+	idx = 3;	/* load_argv current option index */
 
 	/* fill '--command-line' option */
 	if (item->device) {
-		/* default device to mount */
-		strcpy(mount_dev, item->device);
-
 		/* allocate space */
-		n = sizeof(str_cmdline_start) + strlen(item->device) +
-				sizeof(str_ubirootdev) + 2 +
+		n = sizeof(str_cmdline_start) + 
+				sizeof(str_ubirootdev) + 2 + strlen(item->device) +
 				sizeof(str_ubimtd) + 2 + sizeof(str_ubimtd_off) + 1 +
 				sizeof(str_rootwait) +
 				sizeof(str_rootfstype) + strlen(item->fstype) + 2 +
@@ -244,9 +241,10 @@ void start_kernel(struct params_t *params, int choice)
 			perror("Can't allocate memory for cmdline_arg");
 		} else {
 
-			strcpy(cmdline_arg, str_cmdline_start);	/* --command-line=root= */
+			strcpy(cmdline_arg, str_cmdline_start);	/* --command-line= */
 
 			if (item->fstype) {
+				strcpy(mount_dev, item->device);
 
 				/* default fstype to mount */
 				strcpy(mount_fstype, item->fstype);
@@ -257,7 +255,7 @@ void start_kernel(struct params_t *params, int choice)
 					/* mtd id [0-15] - one or two digits */
 					if(isdigit(atoi(item->device+strlen(item->device)-2))) {
 						strcpy(str_mtd_id, item->device+strlen(item->device)-2);
-						strcat(str_mtd_id, item->device+strlen(item->device)-1);
+						(str_mtd_id, item->device+strlen(item->device)-1);
 					} else {
 						strcpy(str_mtd_id, item->device+strlen(item->device)-1);
 					}
@@ -282,13 +280,8 @@ void start_kernel(struct params_t *params, int choice)
 					strcat(cmdline_arg, ",");
 					strcat(cmdline_arg, str_ubimtd_off);
 #endif
-				} else {
-					strcat(cmdline_arg, item->device); /* root=item->device */
-				}
-				strcat(cmdline_arg, str_rootfstype);
-				strcat(cmdline_arg, mount_fstype);
+				} 
 			}
-			strcat(cmdline_arg, str_rootwait);
 
 			if (params->cfg->mtdparts) {
 				strcat(cmdline_arg, str_mtdparts);
@@ -300,10 +293,8 @@ void start_kernel(struct params_t *params, int choice)
 				strcat(cmdline_arg, params->cfg->fbcon);
 			}
 
-			if (item->cmdline) {
-				strcat(cmdline_arg, " ");
+			if (item->cmdline) 
 				strcat(cmdline_arg, item->cmdline);
-			}
 			load_argv[idx] = cmdline_arg;
 			++idx;
 		}
@@ -328,16 +319,17 @@ void start_kernel(struct params_t *params, int choice)
 	/* Append kernelpath as last arg of kexec */
 	load_argv[idx] = item->kernelpath;
 
-	DPRINTF("load_argv: %s, %s, %s, %s, %s", load_argv[0],
-			load_argv[1], load_argv[2],
-			load_argv[3], load_argv[4]);
-
 	/* Mount boot device */
 	if ( -1 == mount(mount_dev, mount_point, mount_fstype,
 			MS_RDONLY, NULL) ) {
 		perror("Can't mount boot device");
 		exit(-1);
 	}
+	fprintf(stderr, "load_argv: %s, %s, %s, %s, %s, %s ", 
+			load_argv[0], load_argv[1],
+			load_argv[2], load_argv[3],
+			load_argv[4], load_argv[5]);
+	sleep(4);
 
 	/* Load kernel */
 	n = fexecw(kexec_path, (char *const *)load_argv, envp);
@@ -362,7 +354,7 @@ void start_kernel(struct params_t *params, int choice)
 		}
 	}
 
-	DPRINTF("exec_argv: %s, %s, %s", exec_argv[0],
+	printf("exec_argv: %s, %s, %s", exec_argv[0],
 			exec_argv[1], exec_argv[2]);
 
 	/* Boot new kernel */

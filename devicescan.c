@@ -39,6 +39,8 @@ struct charlist *scan_filesystems()
 	char line[80];
 
 	fl = create_charlist(8);
+
+	addto_charlist(fl, "lvm2");
 	// make a list of all known filesystems
 	FILE *f = fopen("/proc/filesystems", "r");
 
